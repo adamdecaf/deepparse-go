@@ -1,0 +1,28 @@
+{
+  "model_type": "bpemb_attention",
+  "parsed_addresses": {
+    "350 rue des Lilas Ouest Quebec city Quebec G1L 1B6": {
+      "StreetNumber": "350",
+      "StreetName": "rue des lilas ouest",
+      "Unit": null,
+      "Municipality": "quebec city",
+      "Province": "quebec",
+      "PostalCode": "g1l 1b6",
+      "Orientation": null,
+      "GeneralDelivery": null,
+      "EOS": null
+    },
+    "2325 Rue de l'Université, Québec, QC G1V 0A6": {
+      "StreetNumber": "2325",
+      "StreetName": "rue de l'université",
+      "Unit": null,
+      "Municipality": "québec",
+      "Province": "qc",
+      "PostalCode": "g1v 0a6",
+      "Orientation": null,
+      "GeneralDelivery": null,
+      "EOS": null
+    }
+  },
+  "version": "cfb190902476376573591c0ec6f91ece"
+}
