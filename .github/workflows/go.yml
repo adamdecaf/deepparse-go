@@ -8,6 +8,7 @@ jobs:
   build:
     name: Go Build
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       matrix:
         os: [ubuntu-latest] # TODO(adam): these don't support docker - macos-latest, windows-latest

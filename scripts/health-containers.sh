@@ -1,6 +1,6 @@
 #!/bin/bash
 
-timeout=300  # 5 minutes
+timeout=1500  # 25 minutes
 start_time=$(date +%s)
 
 until docker ps -q | xargs -n1 docker inspect --format '{{.State.Health.Status}}' | grep -q healthy; do
