@@ -2,6 +2,13 @@ services:
   deepparse:
     image: ghcr.io/graal-research/deepparse:0.9.13
     command: uvicorn deepparse.app.app:app --host 0.0.0.0
+    healthcheck:
+      test: |
+        curl -XPOST "http://127.0.0.1:8000/parse/bpemb-attention" -H "Content-Type: application/json" --data-raw '[{"raw": "123 1st St Washington DC"}]'
+      interval: 20s
+      start_period: 120s
+      timeout: 10s
+      retries: 20
     ports:
       - 8000:8000
     networks:

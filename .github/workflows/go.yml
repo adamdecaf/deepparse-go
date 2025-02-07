@@ -1,0 +1,37 @@
+name: Go
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: Go Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest] # TODO(adam): these don't support docker - macos-latest, windows-latest
+    steps:
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v5
+      with:
+        go-version: stable
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v4
+
+    - name: Install make (Windows)
+      if: runner.os == 'Windows'
+      run: choco install -y make mingw
+
+    - name: Setup Dependencies
+      run: docker compose up -d
+
+    - name: Verify Dependencies are Healthy
+      run: ./scripts/health-containers.sh
+
+    - name: Go Tests
+      run: make check
