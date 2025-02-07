@@ -23,3 +23,12 @@ go.work.sum
 
 # env file
 .env
+
+# Linters
+/lint-project.sh
+bin/
+tmp/
+gitleaks.tar.gz
+
+# deepparse cache
+/data/
