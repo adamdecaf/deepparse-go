@@ -111,24 +111,32 @@ func BenchmarkClient(b *testing.B) {
 
 func liveDeepparseURL(t testing.TB) string {
 	t.Helper()
-	if testing.Short() {
-		t.Skip("skipping deepparse docker integration in short mode")
-	}
 
 	base := os.Getenv("DEEPPARSE_URL")
+	requireServer := base != "" || os.Getenv("GITHUB_ACTIONS") == "true"
 	if base == "" {
 		base = "http://localhost:8000"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	if testing.Short() && !requireServer {
+		t.Skip("skipping deepparse docker integration in short mode")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/docs", nil)
 	if err != nil {
+		if requireServer {
+			t.Fatalf("deepparse server not running at %s: %v", base, err)
+		}
 		t.Skipf("deepparse server not running at %s: %v", base, err)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		if requireServer {
+			t.Fatalf("deepparse server not running at %s: %v", base, err)
+		}
 		t.Skipf("deepparse server not running at %s: %v", base, err)
 	}
 	resp.Body.Close()

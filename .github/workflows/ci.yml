@@ -65,7 +65,16 @@ jobs:
       - name: Wait for deepparse
         run: ./scripts/health-containers.sh
 
-      - name: Go tests and linters
+      - name: Live API tests
+        run: go test -count=1 -v -run 'TestIntegration' ./...
+        env:
+          DEEPPARSE_URL: http://localhost:8000
+
+      - name: Go linters and coverage
         run: make check
         env:
           DEEPPARSE_URL: http://localhost:8000
+
+      - name: Deepparse logs
+        if: failure()
+        run: docker compose ps && docker compose logs
