@@ -6,7 +6,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/adamdecaf/deepparse-go)](https://goreportcard.com/report/github.com/adamdecaf/deepparse-go)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/adamdecaf/deepparse-go/master/LICENSE)
 
-Go client for [GRAAL-Research/deepparse](https://github.com/GRAAL-Research/deepparse)'s [HTTP API](https://deepparse.org/api.html) (0.11.0+).
+Go HTTP client for [GRAAL-Research/deepparse](https://github.com/GRAAL-Research/deepparse)'s [FastAPI](https://deepparse.org/api.html) (0.11.0+). Parse multinational street addresses into structured components: street number, street name, unit, municipality, province, postal code, orientation, and general delivery.
 
 The parse endpoint returns `parsed_addresses` as a list of `{raw: parsed}` objects so duplicate inputs keep their order.
 
