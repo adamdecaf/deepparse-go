@@ -1,4 +1,5 @@
-.PHONY: check
+.PHONY: check test docker-up docker-down
+
 check:
 ifeq ($(OS),Windows_NT)
 	go test ./...
@@ -7,3 +8,15 @@ else
 	@chmod +x ./lint-project.sh
 	COVER_THRESHOLD=60.0 ./lint-project.sh
 endif
+
+test:
+	go test ./...
+
+docker-up:
+	mkdir -p data
+	chmod 777 data
+	docker compose up -d
+	./scripts/health-containers.sh
+
+docker-down:
+	docker compose down

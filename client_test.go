@@ -2,33 +2,56 @@ package deepparsego
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestClient(t *testing.T) {
-	httpClient := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-	cc := NewClient(httpClient, "http://localhost:8000")
-	require.NotNil(t, cc)
+func TestParseAddresses(t *testing.T) {
+	const (
+		addr1 = "350 rue des Lilas Ouest Quebec city Quebec G1L 1B6"
+		addr2 = "2325 Rue de l'Université, Québec, QC G1V 0A6"
+	)
 
-	ctx := context.Background()
-	resp, err := cc.ParseAddresses(ctx, ModelBPEmbAttention, []string{
-		"350 rue des Lilas Ouest Quebec city Quebec G1L 1B6",
-		"2325 Rue de l'Université, Québec, QC G1V 0A6",
-	})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/parse/bpemb-attention", r.URL.Path)
+		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+
+		var req searchRequest
+		require.NoError(t, json.Unmarshal(body, &req))
+		require.Equal(t, searchRequest{{Raw: addr1}, {Raw: addr2}}, req)
+
+		w.Header().Set("Content-Type", "application/json")
+		_, err = w.Write([]byte(`{
+			"model_type": "bpemb_attention",
+			"parsed_addresses": [
+				{"` + addr1 + `": {"StreetNumber":"350","StreetName":"rue des lilas ouest","Municipality":"quebec city","Province":"quebec","PostalCode":"g1l 1b6"}},
+				{"` + addr2 + `": {"StreetNumber":"2325","StreetName":"rue de l'université","Municipality":"québec","Province":"qc","PostalCode":"g1v 0a6"}}
+			],
+			"version": "test-version"
+		}`))
+		require.NoError(t, err)
+	}))
+	t.Cleanup(srv.Close)
+
+	cc := NewClient(srv.Client(), srv.URL+"/")
+	resp, err := cc.ParseAddresses(context.Background(), ModelBPEmbAttention, []string{addr1, addr2})
 	require.NoError(t, err)
 
-	require.Equal(t, Model("bpemb_attention"), resp.Model) // TODO(adam): API returns _ but requires -
-	require.Len(t, resp.Addresses, 2)
-	require.NotEmpty(t, resp.Version)
-
-	expected := []ParsedAddress{
+	require.Equal(t, Model("bpemb_attention"), resp.Model)
+	require.Equal(t, "test-version", resp.Version)
+	require.Equal(t, []ParsedAddress{
 		{
+			Raw:          addr1,
 			StreetNumber: "350",
 			StreetName:   "rue des lilas ouest",
 			Municipality: "quebec city",
@@ -36,65 +59,101 @@ func TestClient(t *testing.T) {
 			PostalCode:   "g1l 1b6",
 		},
 		{
+			Raw:          addr2,
 			StreetNumber: "2325",
 			StreetName:   "rue de l'université",
 			Municipality: "québec",
 			Province:     "qc",
 			PostalCode:   "g1v 0a6",
 		},
-	}
-	require.ElementsMatch(t, expected, resp.Addresses)
+	}, resp.Addresses)
 }
 
-func BenchmarkClient(b *testing.B) {
-	ctx := context.Background()
+func TestParseAddresses_DuplicatesKeepOrder(t *testing.T) {
+	raw := "350 rue des Lilas Ouest Quebec city Quebec G1L 1B6"
 
-	httpClient := &http.Client{
-		Timeout: 5 * time.Second,
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/parse/bpemb", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{
+			"model_type": "bpemb",
+			"parsed_addresses": [
+				{"` + raw + `": {"StreetNumber":"350","StreetName":"rue des lilas ouest"}},
+				{"` + raw + `": {"StreetNumber":"350","StreetName":"rue des lilas ouest"}}
+			],
+			"version": "v"
+		}`))
+		require.NoError(t, err)
+	}))
+	t.Cleanup(srv.Close)
+
+	resp, err := NewClient(srv.Client(), srv.URL).ParseAddresses(context.Background(), ModelBPEmb, []string{raw, raw})
+	require.NoError(t, err)
+	require.Len(t, resp.Addresses, 2)
+	require.Equal(t, raw, resp.Addresses[0].Raw)
+	require.Equal(t, raw, resp.Addresses[1].Raw)
+}
+
+func TestParseAddresses_HTTPErrors(t *testing.T) {
+	tests := []struct {
+		name       string
+		status     int
+		body       string
+		wantDetail string
+	}{
+		{
+			name:       "empty list",
+			status:     http.StatusUnprocessableEntity,
+			body:       `{"detail":"Addresses parameter must not be empty"}`,
+			wantDetail: "Addresses parameter must not be empty",
+		},
+		{
+			name:       "unknown model",
+			status:     http.StatusUnprocessableEntity,
+			body:       `{"detail":"Parsing model not implemented, available choices: ['bpemb']"}`,
+			wantDetail: "Parsing model not implemented",
+		},
+		{
+			name:       "too many addresses",
+			status:     http.StatusRequestEntityTooLarge,
+			body:       `{"detail":"Too many addresses in a single request (max 1024)."}`,
+			wantDetail: "Too many addresses in a single request (max 1024).",
+		},
 	}
-	cc := NewClient(httpClient, "http://localhost:8000")
-	require.NotNil(b, cc)
 
-	// same as moov-io/watchman's ./pkg/address/address_libpostal_test.go#Benchmark_ParseAddress
-	inputs := []string{
-		"Flat 7B, Tower 2, Ocean Financial Centre, 12 Marina Boulevard, Singapore 018982",
-		"Room 1403, West Wing, Trading Complex No. 5, 47 Al Souq Street, Dubai, United Arab Emirates",
-		"Office 892, Floor 8, Edificio Comercial Torres, Avenida Balboa y Calle 42, Panama City, Panama",
-		"Unit 15, 3rd Floor, 123 Pyongyang Industrial Zone, Rangnang District, Pyongyang, DPRK",
-		"Suite 405, Business Center Red Square, 17 Tverskaya Street, Moscow 125009, Russian Federation",
-		"Warehouse 23, Port Zone B, Terminal 4, Latakia Port Complex, Latakia, Syria",
-		"Office 78, Tehran Trade Tower, Block 2, Valiasr Street, Tehran 19395-4791, Iran",
-		"Villa 15, Street 7, Block 4, Diplomatic Quarter, Caracas 1010, Venezuela",
-		"Room 2201, Finance Plaza Building, 333 Lujiazui Ring Road, Shanghai 200120, China",
-		"Suite 17, Victoria Business Park, 45 Harare Drive, Harare, Zimbabwe",
-		"Office Complex Delta, Building C, Floor 5, 89 Minsk Boulevard, Minsk 220114, Belarus",
-		"Unit 908, Golden Trade Center, 78 Yangon Port Road, Yangon 11181, Myanmar",
-		"Floor 3, Al-Zawra Tower, Block 215, Baghdad Commercial District, Baghdad, Iraq",
-		"Building 45, Industrial Zone 3, Damascus International Airport Road, Damascus, Syria",
-		"Suite 301, Havana Trade Building, 67 Malecon Avenue, Havana 10400, Cuba",
-		"Office 12, Floor 4, Conakry Commerce Center, Route du Niger, Conakry, Guinea",
-		"Unit 55, Khartoum Business Complex, Al Gamhoria Avenue, Khartoum, Sudan",
-		"Room 789, Floor 7, Trade Tower 3, Kim Il Sung Square, Pyongyang, DPRK",
-		"Building 23, Floor 2, Sevastopol Maritime Complex, 45 Port Street, Sevastopol 99011",
-		"Office 445, Tripoli Trade Center, Omar Al-Mukhtar Street, Tripoli, Libya",
-	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			t.Cleanup(srv.Close)
 
-	models := []Model{
-		// ModelFastText,
-		// ModelFastTextAttention,
-		// ModelFastTextLight,
-		ModelBPEmb,
-		ModelBPEmbAttention,
-	}
+			_, err := NewClient(srv.Client(), srv.URL).ParseAddresses(context.Background(), ModelBPEmb, []string{"an address"})
+			require.Error(t, err)
 
-	for _, m := range models {
-		b.Run(string(m), func(b *testing.B) {
-			b.StartTimer()
-			resp, err := cc.ParseAddresses(ctx, m, inputs)
-			b.StopTimer()
-
-			require.NoError(b, err)
-			require.Len(b, resp.Addresses, len(inputs)) // we got back the same number of addresses
+			var apiErr *APIError
+			require.ErrorAs(t, err, &apiErr)
+			require.Equal(t, tc.status, apiErr.StatusCode)
+			require.Contains(t, apiErr.Detail, tc.wantDetail)
+			require.Contains(t, apiErr.Error(), "deepparse API error")
 		})
 	}
+}
+
+func TestParseAddresses_NilHTTPClient(t *testing.T) {
+	cc := NewClient(nil, "http://127.0.0.1:1")
+	require.NotNil(t, cc)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	_, err := cc.ParseAddresses(ctx, ModelBPEmb, []string{"x"})
+	require.Error(t, err)
+}
+
+func TestNewAPIError_NonJSON(t *testing.T) {
+	err := newAPIError(http.StatusInternalServerError, []byte("boom"))
+	require.Equal(t, 500, err.StatusCode)
+	require.Equal(t, "boom", err.Detail)
 }

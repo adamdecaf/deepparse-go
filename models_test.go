@@ -28,36 +28,39 @@ func TestModelsRead(t *testing.T) {
 	require.NoError(t, err)
 
 	var resp searchResponse
-
 	err = json.Unmarshal(bs, &resp)
 	require.NoError(t, err)
 
-	expected := searchResponse{
-		ModelType: "bpemb_attention",
-		ParsedAddresses: map[string]ParsedAddress{
-			"2325 Rue de l'Université, Québec, QC G1V 0A6": {
-				StreetNumber:    "2325",
-				StreetName:      "rue de l'université",
-				Unit:            "",
-				Municipality:    "québec",
-				Province:        "qc",
-				PostalCode:      "g1v 0a6",
-				Orientation:     "",
-				GeneralDelivery: "",
-			},
-			"350 rue des Lilas Ouest Quebec city Quebec G1L 1B6": {
-				StreetNumber:    "350",
-				StreetName:      "rue des lilas ouest",
-				Unit:            "",
-				Municipality:    "quebec city",
-				Province:        "quebec",
-				PostalCode:      "g1l 1b6",
-				Orientation:     "",
-				GeneralDelivery: "",
-			},
-		},
-		Version: "cfb190902476376573591c0ec6f91ece",
-	}
+	require.Equal(t, "bpemb_attention", resp.ModelType)
+	require.Equal(t, "cfb190902476376573591c0ec6f91ece", resp.Version)
+	require.Len(t, resp.ParsedAddresses, 2)
 
-	require.Equal(t, expected, resp)
+	firstRaw, first := onlyEntry(t, resp.ParsedAddresses[0])
+	require.Equal(t, "350 rue des Lilas Ouest Quebec city Quebec G1L 1B6", firstRaw)
+	require.Equal(t, ParsedAddress{
+		StreetNumber: "350",
+		StreetName:   "rue des lilas ouest",
+		Municipality: "quebec city",
+		Province:     "quebec",
+		PostalCode:   "g1l 1b6",
+	}, first)
+
+	secondRaw, second := onlyEntry(t, resp.ParsedAddresses[1])
+	require.Equal(t, "2325 Rue de l'Université, Québec, QC G1V 0A6", secondRaw)
+	require.Equal(t, ParsedAddress{
+		StreetNumber: "2325",
+		StreetName:   "rue de l'université",
+		Municipality: "québec",
+		Province:     "qc",
+		PostalCode:   "g1v 0a6",
+	}, second)
+}
+
+func onlyEntry(t *testing.T, item map[string]ParsedAddress) (string, ParsedAddress) {
+	t.Helper()
+	require.Len(t, item, 1)
+	for raw, addr := range item {
+		return raw, addr
+	}
+	return "", ParsedAddress{}
 }

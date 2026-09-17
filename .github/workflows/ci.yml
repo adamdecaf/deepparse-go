@@ -1,36 +1,71 @@
-name: 'CI'
+name: CI
 
 on:
   workflow_dispatch:
   push:
-    branches: [ master ]
-  pull_request: {}
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  id-token: write
   contents: read
-  pull-requests: read
 
 jobs:
-  detect_changes:
-    name: Detect file changes
+  unit:
+    name: Unit tests
     runs-on: ubuntu-latest
-    outputs:
-      go_changes: ${{ steps.go_changes.outputs.src }}
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out code
+        uses: actions/checkout@v6
 
-      - uses: dorny/paths-filter@v3
-        id: go_changes
+      - name: Set up Go
+        uses: actions/setup-go@v6
         with:
-          filters: |
-            src:
-              - go.mod
-              - '**/*.go'
+          go-version: stable
+          cache: true
 
-  go:
-    needs: detect_changes
-    if: ${{ needs.detect_changes.outputs.go_changes == 'true' }}
-    uses: ./.github/workflows/go.yml
-    name: Go Tests
-    secrets: inherit
+      - name: Tests
+        run: go test -short -count=1 ./...
+
+      - name: Vet
+        run: go vet ./...
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: true
+
+      - name: Cache model weights
+        uses: actions/cache@v4
+        with:
+          path: ./data
+          key: ${{ runner.os }}-deepparse-0.11.0
+          restore-keys: |
+            ${{ runner.os }}-deepparse-
+
+      - name: Start deepparse
+        run: |
+          mkdir -p data
+          chmod 777 data
+          docker compose up -d
+
+      - name: Wait for deepparse
+        run: ./scripts/health-containers.sh
+
+      - name: Go tests and linters
+        run: make check
+        env:
+          DEEPPARSE_URL: http://localhost:8000
