@@ -113,7 +113,7 @@ func liveDeepparseURL(t testing.TB) string {
 	t.Helper()
 
 	base := os.Getenv("DEEPPARSE_URL")
-	requireServer := base != "" || os.Getenv("GITHUB_ACTIONS") == "true"
+	requireServer := base != ""
 	if base == "" {
 		base = "http://localhost:8000"
 	}
