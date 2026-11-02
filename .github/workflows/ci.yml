@@ -76,6 +76,7 @@ jobs:
         run: make check
         env:
           DEEPPARSE_URL: http://localhost:8000
+          GOLANGCI_LINT_VERSION: v2.15.0
 
       - name: Deepparse logs
         if: failure()
