@@ -4,13 +4,14 @@
 # errors and prints nothing. Pre-placing the binary lets that script reuse it.
 set -euo pipefail
 
-version="${GOLANGCI_LINT_VERSION:-v2.15.0}"
+version="${GOLANGCI_LINT_VERSION:-latest}"
 if [[ "$version" == "latest" ]]; then
-  version=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+  # JSON Accept is more reliable than grepping the HTML redirect URL.
+  version=$(curl -fsSL -H 'Accept: application/json' \
     https://github.com/golangci/golangci-lint/releases/latest \
-    | grep -Eo 'v[0-9][0-9.]*$')
-  if [[ -z "$version" ]]; then
-    echo "failed to resolve golangci-lint latest tag" >&2
+    | tr -s '\n' ' ' | sed 's/.*"tag_name":"//' | sed 's/".*//')
+  if [[ ! "$version" =~ ^v[0-9] ]]; then
+    echo "failed to resolve golangci-lint latest tag (got: ${version:-empty})" >&2
     exit 1
   fi
 fi
