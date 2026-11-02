@@ -1,16 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-timeout=1500  # 25 minutes
+timeout=1800  # 30 minutes
 start_time=$(date +%s)
 
 healthy() {
-  local ids
+  local ids status
   ids=$(docker compose ps -q 2>/dev/null || true)
   if [ -z "$ids" ]; then
     return 1
   fi
-  echo "$ids" | xargs -n1 docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null | grep -q healthy
+  status=$(echo "$ids" | xargs -n1 docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null)
+  [ "$status" = "healthy" ]
 }
 
 until healthy; do

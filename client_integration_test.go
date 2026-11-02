@@ -41,6 +41,31 @@ func TestIntegrationParseAddresses(t *testing.T) {
 	require.NotEmpty(t, resp.Addresses[1].PostalCode)
 }
 
+func TestIntegrationParseAddresses_Model2Vec(t *testing.T) {
+	base := liveDeepparseURL(t)
+	cc := NewClient(&http.Client{Timeout: 30 * time.Second}, base)
+
+	inputs := []string{
+		"350 rue des Lilas Ouest Quebec city Quebec G1L 1B6",
+		"350 rue des Lilas Ouest Quebec city Quebec G1L 1B6",
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	resp, err := cc.ParseAddresses(ctx, Model2Vec8M, inputs)
+	require.NoError(t, err)
+	require.Equal(t, Model("model2vec-8m"), resp.Model)
+	require.NotEmpty(t, resp.Version)
+	require.Len(t, resp.Addresses, len(inputs))
+	require.Equal(t, inputs[0], resp.Addresses[0].Raw)
+	require.Equal(t, inputs[1], resp.Addresses[1].Raw)
+	require.Equal(t, "350", resp.Addresses[0].StreetNumber)
+	require.NotEmpty(t, resp.Addresses[0].StreetName)
+	require.Empty(t, resp.Addresses[0].Orientation)
+	require.Empty(t, resp.Addresses[0].GeneralDelivery)
+}
+
 func TestIntegrationParseAddresses_EmptyRejected(t *testing.T) {
 	base := liveDeepparseURL(t)
 	cc := NewClient(&http.Client{Timeout: 15 * time.Second}, base)
@@ -95,6 +120,7 @@ func BenchmarkClient(b *testing.B) {
 	models := []Model{
 		ModelBPEmb,
 		ModelBPEmbAttention,
+		Model2Vec8M,
 	}
 
 	for _, m := range models {

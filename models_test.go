@@ -10,6 +10,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestModels(t *testing.T) {
+	require.Equal(t, []Model{
+		ModelFastText,
+		ModelFastTextAttention,
+		ModelFastTextLight,
+		ModelBPEmb,
+		ModelBPEmbAttention,
+		Model2Vec8M,
+		Model2Vec8MAttention,
+		Model2Vec32M,
+		Model2Vec32MAttention,
+		Model2VecMultilingual,
+		Model2VecMultilingualAttention,
+	}, Models)
+
+	seen := make(map[Model]struct{}, len(Models))
+	for _, m := range Models {
+		require.NotEmpty(t, string(m))
+		_, dup := seen[m]
+		require.False(t, dup, "duplicate model %q", m)
+		seen[m] = struct{}{}
+	}
+}
+
 func TestModelsWrite(t *testing.T) {
 	req := searchRequest{
 		{Raw: "350 rue des Lilas Ouest Quebec city Quebec G1L 1B6"},

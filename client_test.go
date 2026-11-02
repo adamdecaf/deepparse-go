@@ -69,6 +69,24 @@ func TestParseAddresses(t *testing.T) {
 	}, resp.Addresses)
 }
 
+func TestParseAddresses_ModelPaths(t *testing.T) {
+	for _, model := range Models {
+		t.Run(string(model), func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, "/parse/"+string(model), r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				_, err := w.Write([]byte(`{"model_type":"` + string(model) + `","parsed_addresses":[],"version":"v"}`))
+				require.NoError(t, err)
+			}))
+			t.Cleanup(srv.Close)
+
+			resp, err := NewClient(srv.Client(), srv.URL).ParseAddresses(context.Background(), model, []string{})
+			require.NoError(t, err)
+			require.Equal(t, model, resp.Model)
+		})
+	}
+}
+
 func TestParseAddresses_DuplicatesKeepOrder(t *testing.T) {
 	raw := "350 rue des Lilas Ouest Quebec city Quebec G1L 1B6"
 

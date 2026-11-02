@@ -1,6 +1,7 @@
 services:
   deepparse:
-    image: ghcr.io/graal-research/deepparse:0.11.0
+    image: ghcr.io/graal-research/deepparse:1.0.0
+    platform: linux/amd64
     command: uvicorn deepparse.app.app:app --host 0.0.0.0 --port 8000
     healthcheck:
       test:
@@ -11,7 +12,7 @@ services:
           "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/docs')",
         ]
       interval: 15s
-      start_period: 180s
+      start_period: 300s
       timeout: 10s
       retries: 40
     ports:
@@ -21,4 +22,5 @@ services:
     environment:
       HF_HOME: /home/appuser/.cache/huggingface
       TRANSFORMERS_CACHE: /home/appuser/.cache/huggingface
+      HF_TOKEN: ${HF_TOKEN:-}
       SENTRY_DSN: ${SENTRY_DSN:-}

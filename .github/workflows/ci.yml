@@ -37,7 +37,7 @@ jobs:
   integration:
     name: Integration tests
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -52,11 +52,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./data
-          key: ${{ runner.os }}-deepparse-0.11.0
+          key: ${{ runner.os }}-deepparse-1.0.0
           restore-keys: |
             ${{ runner.os }}-deepparse-
 
       - name: Start deepparse
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           mkdir -p data
           chmod 777 data

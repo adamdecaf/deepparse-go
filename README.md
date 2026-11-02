@@ -6,7 +6,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/adamdecaf/deepparse-go)](https://goreportcard.com/report/github.com/adamdecaf/deepparse-go)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/adamdecaf/deepparse-go/master/LICENSE)
 
-Go HTTP client for [GRAAL-Research/deepparse](https://github.com/GRAAL-Research/deepparse)'s [FastAPI](https://deepparse.org/api.html) (0.11.0+). Parse multinational street addresses into structured components: street number, street name, unit, municipality, province, postal code, orientation, and general delivery.
+Go HTTP client for [GRAAL-Research/deepparse](https://github.com/GRAAL-Research/deepparse)'s [FastAPI](https://deepparse.org/api.html) (1.0.0+). Parse multinational street addresses into structured components: street number, street name, unit, municipality, province, postal code, orientation, and general delivery.
 
 The parse endpoint returns `parsed_addresses` as a list of `{raw: parsed}` objects so duplicate inputs keep their order.
 
@@ -29,12 +29,13 @@ resp, err := cc.ParseAddresses(ctx, ModelBPEmbAttention, []string{
 // handle resp.Addresses
 ```
 
-Supported models: `fasttext`, `fasttext-attention`, `fasttext-light`, `bpemb`, `bpemb-attention`.
-The published Docker image loads the BPEmb models; FastText models are skipped at startup.
+Supported models: `fasttext`, `fasttext-attention`, `fasttext-light`, `bpemb`, `bpemb-attention`, `model2vec-8m`, `model2vec-8m-attention`, `model2vec-32m`, `model2vec-32m-attention`, `model2vec-multilingual`, `model2vec-multilingual-attention`.
+
+The published Docker image loads the BPEmb and Model2Vec models; FastText models are skipped at startup. Model2Vec models do not predict `Orientation` or `GeneralDelivery`.
 
 ## Contributing
 
-The integration tests require pulling the [ghcr.io/graal-research/deepparse](https://github.com/GRAAL-Research/deepparse/pkgs/container/deepparse) image (`0.11.0`).
+The integration tests require pulling the [ghcr.io/graal-research/deepparse](https://github.com/GRAAL-Research/deepparse/pkgs/container/deepparse) image (`1.0.0`, linux/amd64).
 
 Pull and start the container before running the full Go tests:
 

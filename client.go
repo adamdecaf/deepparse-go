@@ -38,12 +38,33 @@ type client struct {
 type Model string
 
 const (
-	ModelFastText          Model = "fasttext"
-	ModelFastTextAttention Model = "fasttext-attention"
-	ModelFastTextLight     Model = "fasttext-light"
-	ModelBPEmb             Model = "bpemb"
-	ModelBPEmbAttention    Model = "bpemb-attention"
+	ModelFastText                  Model = "fasttext"
+	ModelFastTextAttention         Model = "fasttext-attention"
+	ModelFastTextLight             Model = "fasttext-light"
+	ModelBPEmb                     Model = "bpemb"
+	ModelBPEmbAttention            Model = "bpemb-attention"
+	Model2Vec8M                    Model = "model2vec-8m"
+	Model2Vec8MAttention           Model = "model2vec-8m-attention"
+	Model2Vec32M                   Model = "model2vec-32m"
+	Model2Vec32MAttention          Model = "model2vec-32m-attention"
+	Model2VecMultilingual          Model = "model2vec-multilingual"
+	Model2VecMultilingualAttention Model = "model2vec-multilingual-attention"
 )
+
+// Models is every /parse/{model} path segment accepted by deepparse 1.0.0.
+var Models = []Model{
+	ModelFastText,
+	ModelFastTextAttention,
+	ModelFastTextLight,
+	ModelBPEmb,
+	ModelBPEmbAttention,
+	Model2Vec8M,
+	Model2Vec8MAttention,
+	Model2Vec32M,
+	Model2Vec32MAttention,
+	Model2VecMultilingual,
+	Model2VecMultilingualAttention,
+}
 
 // MaxAddressesPerRequest is the default deepparse REST limit (HTTP 413 above this).
 const MaxAddressesPerRequest = 1024
@@ -127,7 +148,7 @@ type ParsedAddress struct {
 	GeneralDelivery string `json:"GeneralDelivery"`
 }
 
-// searchResponse matches deepparse 0.11.0+: parsed_addresses is a list of
+// searchResponse matches deepparse 1.0.0: parsed_addresses is a list of
 // {raw: parsed} objects so duplicates keep their order.
 type searchResponse struct {
 	ModelType       string                     `json:"model_type"`
